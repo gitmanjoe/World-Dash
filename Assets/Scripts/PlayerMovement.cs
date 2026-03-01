@@ -7,57 +7,108 @@ using Unity.VisualScripting;
 
 public class PlayerMovement : MonoBehaviour
 {
-	public CharacterController controller;
-	public float speed = 12f;
-	float gravity = -9.81f;
-	public float jumpHeight = 3f;
-	public int health = 50;
-	public Transform groundCheck;
-	public Transform WallCheckleft;
-	public Transform WallCheckright;
-	public float groundDistance = 0.4f;
-	public float WallDistance = 0.5f;
-	public LayerMask groundMask;
-	public LayerMask wallMask;
-	public Transform playCam;
+    public CharacterController controller;
+    public float speed = 12f;
+    float gravity = -9.81f;
+    public float slideGravity = -4.9f;
+    public float jumpHeight = 3f;
 
-	Vector3 velocity;
-	bool isGrounded;
-	public bool isWalling;
+    public float wallCheckDistance = 0.7f;
+    public float wallJumpForce = 15f;
+    public float wallJumpUpForce = 12f;
+    public float wallJumpDecay = 6f;
+    public bool wallJumpCooldown = false;
 
-    // Update is called once per frame
+    public Transform groundCheck;
+    public float groundDistance = 0.4f;
+    public LayerMask groundMask;
+    public LayerMask wallMask;
+
+    public Transform playCam;
+    public float mouseSensitivity = 100f;
+
+    Vector3 velocity;
+    Vector3 wallJumpMomentum;
+
+    bool isGrounded;
+    bool isWalling;
+    Vector3 wallNormal;
+
+    float xRotation = 0f;
+
     void Update()
     {
-		isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
-		isWalling = Physics.CheckSphere(WallCheckleft.position, WallDistance, wallMask) || Physics.CheckSphere(WallCheckright.position, WallDistance, wallMask);
-		if (isWalling && !isGrounded && !Input.GetButtonDown("Jump") && Input.GetAxis("Horizontal") == 0)
-		{
-			playCam.transform.localRotation = Quaternion.Euler(0, 0, playCam.transform.localRotation.z - 30f);
-            Vector3 move = transform.forward * 1.1f;
-			controller.Move(move * speed * Time.deltaTime);
+        isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+
+        if (isGrounded)
+        {
+            wallJumpCooldown = false;
         }
-		else
-		{
-			if (isGrounded && velocity.y < 0)
-			{
-				velocity.y = -2f;
-			}
 
-			float x = Input.GetAxis("Horizontal");
-			float z = Input.GetAxis("Vertical");
+        RaycastHit hit;
+        if (Physics.Raycast(transform.position, transform.right, out hit, wallCheckDistance, wallMask))
+        {
+            isWalling = true;
+            wallNormal = hit.normal;
+        }
+        else if (Physics.Raycast(transform.position, -transform.right, out hit, wallCheckDistance, wallMask))
+        {
+            isWalling = true;
+            wallNormal = hit.normal;
+        }
+        else
+        {
+            isWalling = false;
+        }
 
-			Vector3 move = transform.right * x + transform.forward * z;
+        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
 
-			controller.Move(move * speed * Time.deltaTime);
+        xRotation -= mouseY;
+        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+        playCam.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        transform.Rotate(Vector3.up * mouseX);
 
-			if (Input.GetButtonDown("Jump") && isGrounded)
-			{
-				velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-			}
+        float x = Input.GetAxis("Horizontal");
+        float z = Input.GetAxis("Vertical");
+        Vector3 move = transform.right * x + transform.forward * z;
+        controller.Move(move * speed * Time.deltaTime);
 
-			velocity.y += gravity * Time.deltaTime;
+        if (Input.GetButtonDown("Jump"))
+        {
+            if (isGrounded)
+            {
+                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            }
+            else if (isWalling && !wallJumpCooldown)
+            {
+                velocity.y = wallJumpUpForce;
+                wallJumpMomentum = wallNormal * wallJumpForce;
+                wallJumpCooldown = true;
+            }
+        }
 
-			controller.Move(velocity * Time.deltaTime);
-		}
+        if (isWalling && !isGrounded && velocity.y <= 0)
+        {
+            velocity.y += slideGravity * Time.deltaTime;
+            velocity.y = Mathf.Max(velocity.y, -5f);
+            playCam.localRotation = Quaternion.Euler(xRotation, 0f, -30f);
+        }
+        else
+        {
+            velocity.y += gravity * Time.deltaTime;
+            playCam.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        }
+
+        if (isGrounded && velocity.y < 0)
+        {
+            velocity.y = -2f;
+            wallJumpMomentum = Vector3.zero;
+        }
+
+        wallJumpMomentum = Vector3.Lerp(wallJumpMomentum, Vector3.zero, wallJumpDecay * Time.deltaTime);
+
+        Vector3 finalMove = wallJumpMomentum + Vector3.up * velocity.y;
+        controller.Move(finalMove * Time.deltaTime);
     }
 }
