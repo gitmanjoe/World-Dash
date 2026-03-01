@@ -9,6 +9,7 @@ public class PlayerMovement : MonoBehaviour
 {
     public CharacterController controller;
     public float speed = 12f;
+    public float wallSlideSpeed = 18f;
     float gravity = -9.81f;
     public float slideGravity = -4.9f;
     public float jumpHeight = 3f;
@@ -41,9 +42,7 @@ public class PlayerMovement : MonoBehaviour
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
 
         if (isGrounded)
-        {
             wallJumpCooldown = false;
-        }
 
         RaycastHit hit;
         if (Physics.Raycast(transform.position, transform.right, out hit, wallCheckDistance, wallMask))
@@ -77,9 +76,7 @@ public class PlayerMovement : MonoBehaviour
         if (Input.GetButtonDown("Jump"))
         {
             if (isGrounded)
-            {
                 velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-            }
             else if (isWalling && !wallJumpCooldown)
             {
                 velocity.y = wallJumpUpForce;
@@ -91,7 +88,7 @@ public class PlayerMovement : MonoBehaviour
         if (isWalling && !isGrounded && velocity.y <= 0)
         {
             velocity.y += slideGravity * Time.deltaTime;
-            velocity.y = Mathf.Max(velocity.y, -5f);
+            velocity.y = Mathf.Max(velocity.y, -wallSlideSpeed);
             playCam.localRotation = Quaternion.Euler(xRotation, 0f, -30f);
         }
         else
