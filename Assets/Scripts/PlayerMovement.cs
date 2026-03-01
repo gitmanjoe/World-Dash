@@ -10,7 +10,7 @@ public class PlayerMovement : MonoBehaviour
     public CharacterController controller;
     public float speed = 12f;
     public float wallSlideSpeed = 18f;
-    float gravity = -9.81f;
+    public float gravity = -9.81f;
     public float slideGravity = -4.9f;
     public float jumpHeight = 3f;
 
@@ -34,6 +34,7 @@ public class PlayerMovement : MonoBehaviour
     bool isGrounded;
     bool isWalling;
     Vector3 wallNormal;
+    bool wallOnRight;
 
     float xRotation = 0f;
 
@@ -49,11 +50,13 @@ public class PlayerMovement : MonoBehaviour
         {
             isWalling = true;
             wallNormal = hit.normal;
+            wallOnRight = true;
         }
         else if (Physics.Raycast(transform.position, -transform.right, out hit, wallCheckDistance, wallMask))
         {
             isWalling = true;
             wallNormal = hit.normal;
+            wallOnRight = false;
         }
         else
         {
@@ -65,13 +68,22 @@ public class PlayerMovement : MonoBehaviour
 
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
-        playCam.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+
+        float camTilt = 0f;
+        if (isWalling && !isGrounded && velocity.y <= 0)
+        {
+            camTilt = wallOnRight ? 30f : -30f;
+        }
+
+        playCam.localRotation = Quaternion.Euler(xRotation, 0f, camTilt);
         transform.Rotate(Vector3.up * mouseX);
 
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
         Vector3 move = transform.right * x + transform.forward * z;
-        controller.Move(move * speed * Time.deltaTime);
+
+        float activeSpeed = (isWalling && !isGrounded && velocity.y <= 0) ? wallSlideSpeed : speed;
+        controller.Move(move * activeSpeed * Time.deltaTime);
 
         if (Input.GetButtonDown("Jump"))
         {
@@ -89,12 +101,10 @@ public class PlayerMovement : MonoBehaviour
         {
             velocity.y += slideGravity * Time.deltaTime;
             velocity.y = Mathf.Max(velocity.y, -wallSlideSpeed);
-            playCam.localRotation = Quaternion.Euler(xRotation, 0f, -30f);
         }
         else
         {
             velocity.y += gravity * Time.deltaTime;
-            playCam.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
         }
 
         if (isGrounded && velocity.y < 0)
