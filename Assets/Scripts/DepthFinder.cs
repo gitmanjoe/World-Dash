@@ -3,23 +3,42 @@ using UnityEngine;
 
 public class DepthFinder : MonoBehaviour
 {
-    public Transform Player;
-    public TextMeshProUGUI text;
-    float startY;
-    float currentY;
-    float fakeY;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    [SerializeField] private Transform player;
+    [SerializeField] private TextMeshProUGUI text;
+    [SerializeField] private float depthScale = 2f;
+    [SerializeField, Range(0, 5)] private int roundDecimals = 1;
+
+    private float startY;
+    private bool initialized;
+
     void Start()
     {
-        startY = Player.position.y;
+        if (player == null)
+        {
+            Debug.LogWarning("DepthFinder: Player transform is not assigned.");
+            initialized = false;
+            return;
+        }
+
+        startY = player.position.y;
+        initialized = true;
+
+        if (text == null)
+            Debug.LogWarning("DepthFinder: text (TextMeshProUGUI) is not assigned.");
     }
 
-    // Update is called once per frame
-    void Update()
+    void LateUpdate()
     {
-        currentY = Player.position.y;
-        fakeY = startY - currentY;
-        fakeY = fakeY * 2;
-        text.text = "Depth: " + fakeY.ToString() + "M";
+        if (!initialized || player == null || text == null)
+            return;
+
+        float playerY = player.position.y;
+        float depth = (startY - playerY) * depthScale;
+        depth = Mathf.Max(0f, depth); // prevent negative depth if player goes above start
+
+        float pow = Mathf.Pow(10f, roundDecimals);
+        float rounded = Mathf.Round(depth * pow) / pow;
+
+        text.text = "Depth: " + rounded.ToString("F" + roundDecimals) + "m";
     }
 }
