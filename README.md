@@ -1,4 +1,7 @@
-# World Dash
+# World Dash (A.K.A Escape from Boulder)  
+This is our entry to Campfire Ottawa. It is a 3D parkour/exploration game that we made in 24 hours.
+
+## Model sources
 
 - "Jungle Jim's PBR Surface Materials" (https://skfb.ly/pFAwo) by Jungle Jim is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
 
