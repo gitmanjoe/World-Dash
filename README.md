@@ -15,3 +15,5 @@
 - "Mine entrance" (https://skfb.ly/6T6CU) by almarudjord is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
 
 - "Stone Pack" (https://skfb.ly/opCKY) by ashkan.fancy is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+
+"Low Poly Stalagmites/Stalactites" (https://skfb.ly/oQV8z) by navebackwards is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).

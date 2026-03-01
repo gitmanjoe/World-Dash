@@ -1,10 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using TMPro;
-using System;
-using Unity.VisualScripting;
 using UnityEngine.SceneManagement;
+using UnityEngine.Audio;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -31,8 +29,10 @@ public class PlayerMovement : MonoBehaviour
     public Transform playCam;
     public float mouseSensitivity = 100f;
 
+    public AudioClip jumpSound;
+    public AudioClip deathSound;
+    public AudioMixerGroup MixerGroup;
     public DeathMenu deathMenu;
-
     Vector3 velocity;
     Vector3 wallJumpMomentum;
 
@@ -43,18 +43,24 @@ public class PlayerMovement : MonoBehaviour
 
     float xRotation = 0f;
 
+    AudioSource audioSource;
+
+    void Start()
+    {
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.outputAudioMixerGroup = MixerGroup;
+        audioSource.playOnAwake = false;
+    }
+
     void Update()
     {
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
 
         if (Physics.CheckSphere(groundCheck.position, 1f, deathMask))
         {
-            if (deathMenu != null) deathMenu.Show();
-            else SceneManager.LoadScene(SceneManager.GetActiveScene().name); // fallback
+            audioSource.PlayOneShot(deathSound);
+            deathMenu.Show();
         }
-
-        if (isGrounded)
-            wallJumpCooldown = false;
 
         RaycastHit hit;
         if (Physics.Raycast(transform.position, transform.right, out hit, wallCheckDistance, wallMask))
@@ -79,32 +85,28 @@ public class PlayerMovement : MonoBehaviour
 
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
-
-        float camTilt = 0f;
-        if (isWalling && !isGrounded && velocity.y <= wallSlideEngageVelocity)
-        {
-            camTilt = wallOnRight ? 30f : -30f;
-        }
-
-        playCam.localRotation = Quaternion.Euler(xRotation, 0f, camTilt);
+        playCam.localRotation = Quaternion.Euler(xRotation, 0f, isWalling && !isGrounded && velocity.y <= wallSlideEngageVelocity ? (wallOnRight ? 30f : -30f) : 0f);
         transform.Rotate(Vector3.up * mouseX);
 
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
         Vector3 move = transform.right * x + transform.forward * z;
-
         float activeSpeed = (isWalling && !isGrounded && velocity.y <= wallSlideEngageVelocity) ? wallSlideSpeed : speed;
         controller.Move(move * activeSpeed * Time.deltaTime);
 
         if (Input.GetButtonDown("Jump"))
         {
             if (isGrounded)
+            {
                 velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                audioSource.PlayOneShot(jumpSound);
+            }
             else if (isWalling && !wallJumpCooldown)
             {
                 velocity.y = wallJumpUpForce;
                 wallJumpMomentum = wallNormal * wallJumpForce;
                 wallJumpCooldown = true;
+                audioSource.PlayOneShot(jumpSound);
             }
         }
 
@@ -125,7 +127,6 @@ public class PlayerMovement : MonoBehaviour
         }
 
         wallJumpMomentum = Vector3.Lerp(wallJumpMomentum, Vector3.zero, wallJumpDecay * Time.deltaTime);
-
         Vector3 finalMove = wallJumpMomentum + Vector3.up * velocity.y;
         controller.Move(finalMove * Time.deltaTime);
     }

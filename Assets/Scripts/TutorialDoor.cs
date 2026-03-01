@@ -3,7 +3,7 @@ using UnityEngine.SceneManagement;
 
 public class TutorialDoor : MonoBehaviour
 {
-    [Tooltip("Drag the Player GameObject (the one with CharacterController) here")]
+    [Tooltip("Drag the Player GameObject here")]
     public GameObject player;
 
     void OnTriggerEnter(Collider other)
