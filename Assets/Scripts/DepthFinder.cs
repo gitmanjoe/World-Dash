@@ -10,6 +10,8 @@ public class DepthFinder : MonoBehaviour
 
     private float startY;
     private bool initialized;
+    static float savedDepth = 0f;
+    float depth = 0f;
 
     void Start()
     {
@@ -23,6 +25,11 @@ public class DepthFinder : MonoBehaviour
         startY = player.position.y;
         initialized = true;
 
+        if (savedDepth > 0)
+        {
+            startY = savedDepth / 2;
+        }
+
         if (text == null)
             Debug.LogWarning("DepthFinder: text (TextMeshProUGUI) is not assigned.");
     }
@@ -33,8 +40,12 @@ public class DepthFinder : MonoBehaviour
             return;
 
         float playerY = player.position.y;
-        float depth = (startY - playerY) * depthScale;
+        depth = (startY - playerY) * depthScale;
         depth = Mathf.Max(0f, depth); // prevent negative depth if player goes above start
+        if (depth > 0f && depth < 500f)
+        {
+            savedDepth = depth + 490;
+        }
 
         float pow = Mathf.Pow(10f, roundDecimals);
         float rounded = Mathf.Round(depth * pow) / pow;

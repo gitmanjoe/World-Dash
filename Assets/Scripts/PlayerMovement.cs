@@ -13,37 +13,31 @@ public class PlayerMovement : MonoBehaviour
     public float gravity = -9.81f;
     public float slideGravity = -4.9f;
     public float jumpHeight = 3f;
-
     public float wallCheckDistance = 0.7f;
     public float wallJumpForce = 15f;
     public float wallJumpUpForce = 12f;
     public float wallJumpDecay = 6f;
     public bool wallJumpCooldown = false;
-
     public Transform groundCheck;
     public float groundDistance = 0.4f;
     public LayerMask groundMask;
     public LayerMask wallMask;
     public LayerMask deathMask;
-
     public Transform playCam;
     public float mouseSensitivity = 100f;
-
     public AudioClip jumpSound;
     public AudioClip deathSound;
     public AudioMixerGroup MixerGroup;
     public DeathMenu deathMenu;
-    Vector3 velocity;
-    Vector3 wallJumpMomentum;
 
-    bool isGrounded;
-    bool isWalling;
-    Vector3 wallNormal;
-    bool wallOnRight;
-
-    float xRotation = 0f;
-
-    AudioSource audioSource;
+    private Vector3 velocity;
+    private Vector3 wallJumpMomentum;
+    private bool isGrounded;
+    private bool isWalling;
+    private Vector3 wallNormal;
+    private bool wallOnRight;
+    private float xRotation = 0f;
+    private AudioSource audioSource;
 
     void Start()
     {
@@ -54,46 +48,59 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+        // --- Ground Check (slope aware) ---
+        isGrounded = controller.isGrounded;
 
+        // Death Check
         if (Physics.CheckSphere(groundCheck.position, 1f, deathMask))
         {
             audioSource.PlayOneShot(deathSound);
             deathMenu.Show();
         }
 
+        // --- Wall Check ---
         RaycastHit hit;
-        if (Physics.Raycast(transform.position, transform.right, out hit, wallCheckDistance, wallMask))
+        Vector3[] directions = { transform.right, -transform.right, transform.forward, -transform.forward };
+        isWalling = false;
+        foreach (Vector3 dir in directions)
         {
-            isWalling = true;
-            wallNormal = hit.normal;
-            wallOnRight = true;
-        }
-        else if (Physics.Raycast(transform.position, -transform.right, out hit, wallCheckDistance, wallMask))
-        {
-            isWalling = true;
-            wallNormal = hit.normal;
-            wallOnRight = false;
-        }
-        else
-        {
-            isWalling = false;
+            if (Physics.Raycast(transform.position, dir, out hit, wallCheckDistance, wallMask))
+            {
+                isWalling = true;
+                wallNormal = hit.normal;
+                wallOnRight = Vector3.Dot(transform.right, hit.normal) < 0;
+                break;
+            }
         }
 
+        // --- Camera Rotation ---
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
-
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
-        playCam.localRotation = Quaternion.Euler(xRotation, 0f, isWalling && !isGrounded && velocity.y <= wallSlideEngageVelocity ? (wallOnRight ? 30f : -30f) : 0f);
+        playCam.localRotation = Quaternion.Euler(xRotation, 0f,
+            isWalling && !isGrounded && velocity.y <= wallSlideEngageVelocity ? (wallOnRight ? 30f : -30f) : 0f);
         transform.Rotate(Vector3.up * mouseX);
 
+        // --- Player Movement Input ---
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
         Vector3 move = transform.right * x + transform.forward * z;
-        float activeSpeed = (isWalling && !isGrounded && velocity.y <= wallSlideEngageVelocity) ? wallSlideSpeed : speed;
-        controller.Move(move * activeSpeed * Time.deltaTime);
 
+        // Project movement along slope
+        if (isGrounded)
+        {
+            if (Physics.Raycast(transform.position, Vector3.down, out hit, groundDistance + 0.1f, groundMask))
+            {
+                move = Vector3.ProjectOnPlane(move, hit.normal);
+            }
+        }
+
+        // Determine speed
+        float activeSpeed = (isWalling && !isGrounded && velocity.y <= wallSlideEngageVelocity) ? wallSlideSpeed : speed;
+        Vector3 horizontalMove = move * activeSpeed;
+
+        // --- Jump Input ---
         if (Input.GetButtonDown("Jump"))
         {
             if (isGrounded)
@@ -110,6 +117,7 @@ public class PlayerMovement : MonoBehaviour
             }
         }
 
+        // --- Wall Slide / Gravity ---
         if (isWalling && !isGrounded && velocity.y <= wallSlideEngageVelocity)
         {
             velocity.y += slideGravity * Time.deltaTime;
@@ -120,14 +128,19 @@ public class PlayerMovement : MonoBehaviour
             velocity.y += gravity * Time.deltaTime;
         }
 
+        // --- Reset on Ground ---
         if (isGrounded && velocity.y < 0)
         {
-            velocity.y = -2f;
+            velocity.y = -2f; // small downward force to keep grounded
             wallJumpMomentum = Vector3.zero;
+            wallJumpCooldown = false;
         }
 
+        // --- Decay Wall Jump Momentum ---
         wallJumpMomentum = Vector3.Lerp(wallJumpMomentum, Vector3.zero, wallJumpDecay * Time.deltaTime);
-        Vector3 finalMove = wallJumpMomentum + Vector3.up * velocity.y;
+
+        // --- Final Move ---
+        Vector3 finalMove = horizontalMove + wallJumpMomentum + Vector3.up * velocity.y;
         controller.Move(finalMove * Time.deltaTime);
     }
 }
