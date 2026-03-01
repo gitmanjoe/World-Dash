@@ -4,12 +4,14 @@ using UnityEngine;
 using TMPro;
 using System;
 using Unity.VisualScripting;
+using UnityEngine.SceneManagement;
 
 public class PlayerMovement : MonoBehaviour
 {
     public CharacterController controller;
     public float speed = 12f;
     public float wallSlideSpeed = 18f;
+    public float wallSlideEngageVelocity = 0.5f;
     public float gravity = -9.81f;
     public float slideGravity = -4.9f;
     public float jumpHeight = 3f;
@@ -24,6 +26,7 @@ public class PlayerMovement : MonoBehaviour
     public float groundDistance = 0.4f;
     public LayerMask groundMask;
     public LayerMask wallMask;
+    public LayerMask deathMask;
 
     public Transform playCam;
     public float mouseSensitivity = 100f;
@@ -41,6 +44,11 @@ public class PlayerMovement : MonoBehaviour
     void Update()
     {
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+
+        if (Physics.CheckSphere(groundCheck.position, 1f, deathMask)) 
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
 
         if (isGrounded)
             wallJumpCooldown = false;
@@ -70,7 +78,7 @@ public class PlayerMovement : MonoBehaviour
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
         float camTilt = 0f;
-        if (isWalling && !isGrounded && velocity.y <= 0)
+        if (isWalling && !isGrounded && velocity.y <= wallSlideEngageVelocity)
         {
             camTilt = wallOnRight ? 30f : -30f;
         }
@@ -82,7 +90,7 @@ public class PlayerMovement : MonoBehaviour
         float z = Input.GetAxis("Vertical");
         Vector3 move = transform.right * x + transform.forward * z;
 
-        float activeSpeed = (isWalling && !isGrounded && velocity.y <= 0) ? wallSlideSpeed : speed;
+        float activeSpeed = (isWalling && !isGrounded && velocity.y <= wallSlideEngageVelocity) ? wallSlideSpeed : speed;
         controller.Move(move * activeSpeed * Time.deltaTime);
 
         if (Input.GetButtonDown("Jump"))
@@ -97,7 +105,7 @@ public class PlayerMovement : MonoBehaviour
             }
         }
 
-        if (isWalling && !isGrounded && velocity.y <= 0)
+        if (isWalling && !isGrounded && velocity.y <= wallSlideEngageVelocity)
         {
             velocity.y += slideGravity * Time.deltaTime;
             velocity.y = Mathf.Max(velocity.y, -wallSlideSpeed);
