@@ -31,6 +31,8 @@ public class PlayerMovement : MonoBehaviour
     public Transform playCam;
     public float mouseSensitivity = 100f;
 
+    public DeathMenu deathMenu;
+
     Vector3 velocity;
     Vector3 wallJumpMomentum;
 
@@ -45,9 +47,10 @@ public class PlayerMovement : MonoBehaviour
     {
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
 
-        if (Physics.CheckSphere(groundCheck.position, 1f, deathMask)) 
+        if (Physics.CheckSphere(groundCheck.position, 1f, deathMask))
         {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            if (deathMenu != null) deathMenu.Show();
+            else SceneManager.LoadScene(SceneManager.GetActiveScene().name); // fallback
         }
 
         if (isGrounded)
